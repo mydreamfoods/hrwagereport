@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Dream Foods — HR Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;padding:1.5rem;color:#111;background:#f4f6fb;min-height:100vh}
+h1{font-size:20px;font-weight:600;color:#1F3864}
+.sub{font-size:13px;color:#666;margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px 9px;border:0.5px solid #ddd;text-align:left;white-space:nowrap}
+th{background:#eef0f5;font-weight:500;font-size:11px;position:sticky;top:0;z-index:1}
+tr:nth-child(even) td{background:#fafbff}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.p-b{background:#e2efda;color:#375623}.hp-b{background:#fff2cc;color:#7d5a00}.wop-b{background:#dce9f7;color:#0c447c}
+select{font-size:13px;padding:6px 11px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;outline:none;min-width:180px}
+select:focus{border-color:#1F3864}
+button{font-size:13px;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}
+button:hover{border-color:#1F3864;background:#f0f4ff}
+.tab-btn{border:none;border-bottom:2px solid transparent;border-radius:0;padding:9px 18px;font-size:13px;background:transparent;color:#666;cursor:pointer}
+.tab-btn.active{border-bottom:2px solid #1F3864;color:#1F3864;font-weight:500}
+.kpi{background:#fff;border:0.5px solid #dde2ef;border-radius:8px;padding:12px 16px}
+.kpi-lbl{font-size:11px;color:#888;margin-bottom:3px}.kpi-val{font-size:20px;font-weight:500;color:#1F3864}
+.grand-row td{background:#1F3864!important;color:#fff!important;font-weight:500}
+.dept-hdr td{background:#2E75B6!important;color:#fff!important;font-weight:500}
+.ov{overflow-x:auto}
+.card{background:#fff;border:0.5px solid #dde2ef;border-radius:10px;padding:1.25rem}
+.filters{display:flex;gap:14px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:flex-end;background:#f8f9fc;border:0.5px solid #e0e4ef;border-radius:8px;padding:12px 14px}
+.filters label{font-size:11px;color:#555;display:block;margin-bottom:4px;font-weight:500}
+.pill{display:inline-block;background:#e8eef7;color:#1F3864;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.tabs{display:flex;border-bottom:1px solid #ddd;margin-bottom:1rem;flex-wrap:wrap}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.dim{color:#ccc}
+.kg4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem}
+.kg3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+/* Setup screen */
+
+/* Upload screen */
+.upload-page{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem}
+@media(max-width:600px){.upload-page{grid-template-columns:1fr}.kg4{grid-template-columns:1fr 1fr}.kg3{grid-template-columns:1fr 1fr}}
+.upload-box{border:2px dashed #c5cfe0;border-radius:12px;background:#fff;transition:all .15s;overflow:hidden}
+.upload-box.loaded{border-color:#70AD47;border-style:solid}
+.upload-box label{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;cursor:pointer;min-height:180px;text-align:center}
+.upload-box:hover:not(.loaded) label{background:#f0f4ff}
+.upload-box:hover:not(.loaded){border-color:#1F3864}
+.upload-box .icon{font-size:36px;margin-bottom:8px}
+.upload-box .title{font-size:14px;font-weight:500;margin-bottom:4px}
+.upload-box .hint{font-size:12px;color:#888;line-height:1.5}
+.upload-box.loaded .hint{color:#375623;font-weight:500}
+.go-btn{display:block;width:100%;margin-top:1.5rem;padding:12px;font-size:15px;font-weight:500;background:#1F3864;color:#fff;border:none;border-radius:8px;cursor:pointer}
+.go-btn:disabled{background:#ccc;cursor:not-allowed}
+.go-btn:not(:disabled):hover{background:#163057}
+.file-bar{font-size:11px;font-weight:500;padding:7px 14px;border-top:1px solid #c5dbb0;background:#e2efda;color:#375623}
+.sync-bar{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:12px;border-top:1px solid #ffe;background:#fffbe6;color:#7d5a00}
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:12px}
+.spinner{width:36px;height:36px;border:3px solid #e0e4ef;border-top-color:#1F3864;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div style="max-width:1600px;margin:0 auto">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+    <div>
+      <h1>My Dream Foods — HR Dashboard</h1>
+      <p class="sub" id="syncStatus">Connecting…</p>
+    </div>
+    <button id="settingsBtn" style="font-size:12px;padding:4px 10px">⚙ Settings</button>
+  </div>
+
+  <input type="file" id="fu1" accept=".xlsx" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;z-index:-1;">
+  <input type="file" id="fu2" accept=".xls,.xlsx" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;z-index:-1;">
+  <div id="app"></div>
+</div>
+
+<script>
+/* ── CONFIG ───────────────────────────────────────── */
+var GAS_URL = "https://script.google.com/macros/s/AKfycbzJ8F5wjdZgLhwNtoXnDtJH7-qr4AOm-xQZ6_5DWeYPHrAIULQsJJz93hw3rcx3naLIaA/exec";
+var SHOW_SETTINGS = false;
+var SHOW_UPLOAD   = false;
+var W  = null;   // wage data
+var IT = null;   // intime data
+var TAB = "date", T2D="ALL", T2Dt="ALL", T3D="ALL", T3Dt="ALL", T4D="ALL";
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* ── DATE HELPERS ─────────────────────────────────── */
+function toLabel(v){
+  if(!v&&v!==0) return null;
+  if(typeof v==="string"&&/^\d{1,2}-[A-Za-z]{3}/.test(v.trim())) return v.trim();
+  if(v instanceof Date) return String(v.getDate()).padStart(2,"0")+"-"+MONTHS[v.getMonth()];
+  if(typeof v==="number"&&v>1&&v<60000){
+    try{var d=XLSX.SSF.parse_date_code(v);if(d)return String(d.d).padStart(2,"0")+"-"+MONTHS[d.m-1];}catch(e){}
+  }
+  return null;
+}
+
+/* ── HELPERS ──────────────────────────────────────── */
+function getAmt(st,rate){
+  if(!st)return 0;
+  if(st==="P"||st==="P(Missedout)"||st==="WOP")return rate;
+  if(st==="½P"||st==="1/2P"||st==="0.5P")return rate/2;
+  return 0;
+}
+function inr(n){return "₹"+Number(n).toLocaleString("en-IN");}
+function mkBadge(st){
+  if(!st)return "";
+  if(st==="P"||st==="P(Missedout)")return '<span class="badge p-b">P</span>';
+  if(st==="½P"||st==="1/2P")return '<span class="badge hp-b">½P</span>';
+  if(st==="WOP")return '<span class="badge wop-b">WOP</span>';
+  return "";
+}
+function safeCell(ds,date,dept){return(ds&&ds[date]&&ds[date][dept])?ds[date][dept]:{total:0,persons:0};}
+function safeDay(emp,date){return(emp&&emp.daily&&emp.daily[date])?emp.daily[date]:{status:"",amt:0};}
+function mkOpts(list,val,allLabel){
+  var h=allLabel?'<option value="ALL"'+(val==="ALL"?" selected":"")+'>'+allLabel+'</option>':"";
+  list.forEach(function(v){h+='<option value="'+v+'"'+(v===val?" selected":"")+'>'+v+'</option>';});
+  return h;
+}
+function fmtTime(ts){
+  if(!ts) return "Never";
+  try{
+    var d=new Date(ts);
+    return d.getDate()+"-"+MONTHS[d.getMonth()]+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }catch(e){return ts;}
+}
+
+/* ── GAS SYNC ─────────────────────────────────────── */
+// GET uses JSONP (script tag injection) to bypass CORS
+function gasGet(type, cb){
+  if(!GAS_URL){cb(null,"GAS URL not configured");return;}
+  var cbName = "mdf_cb_"+type+"_"+Date.now();
+  var script = document.createElement("script");
+  var timer  = setTimeout(function(){
+    cleanup(); cb(null,"Timeout — check GAS URL");
+  }, 15000);
+  function cleanup(){
+    clearTimeout(timer);
+    try{document.head.removeChild(script);}catch(e){}
+    try{delete window[cbName];}catch(e){}
+  }
+  window[cbName] = function(j){
+    cleanup();
+    if(j && j.error){ cb(null, j.error); }
+    else if(j && j.data){ cb(j, null); }
+    else{ cb(null, "No data saved yet"); }
+  };
+  script.src = GAS_URL + "?type=" + type + "&callback=" + cbName;
+  script.onerror = function(){ cleanup(); cb(null,"Script load failed — check GAS URL & deployment"); };
+  document.head.appendChild(script);
+}
+
+// POST uses no-cors (fire-and-forget) — GAS saves data, we show optimistic success
+function gasPost(type, data, cb){
+  if(!GAS_URL){cb(null,"GAS URL not configured");return;}
+  var body = JSON.stringify({type:type, data:data});
+  fetch(GAS_URL, {
+    method  : "POST",
+    mode    : "no-cors",          // avoids CORS preflight
+    headers : {"Content-Type":"text/plain"},   // simple header = no preflight
+    body    : body
+  })
+  .then(function(){ cb({ok:true}, null); })   // no-cors = opaque response, assume success
+  .catch(function(e){ cb(null, e.message); });
+}
+
+function loadFromGAS(){
+  setSyncStatus("⏳ Loading latest data…");
+  var loaded=0, total=2;
+
+  gasGet("wage",function(j,err){
+    if(j&&j.data){
+      W=j.data;
+      W._updatedAt=j.updatedAt;
+    }
+    loaded++;
+    if(loaded===total) afterAutoLoad();
+  });
+
+  gasGet("intime",function(j,err){
+    if(j&&j.data){
+      IT=j.data;
+      IT._updatedAt=j.updatedAt;
+    }
+    loaded++;
+    if(loaded===total) afterAutoLoad();
+  });
+}
+
+function afterAutoLoad(){
+  if(W||IT){
+    setSyncStatus("✅ Data loaded — Wage: "+(W?fmtTime(W._updatedAt):"—")+" | In-Time: "+(IT?fmtTime(IT._updatedAt):"—"));
+    TAB=W?"date":"intime";
+    renderDashboard();
+  } else {
+    setSyncStatus("📂 No saved data yet. Upload files below.");
+    SHOW_UPLOAD=true;
+    render();
+  }
+}
+
+function setSyncStatus(msg){
+  var el=document.getElementById("syncStatus");
+  if(el) el.textContent=msg;
+}
+
+/* ── PARSE WAGE FILE ──────────────────────────────── */
+function parseWage(buf){
+  var wb=XLSX.read(buf,{type:"array",cellDates:true});
+  if(!wb.Sheets["Rate"])throw new Error("No 'Rate' sheet found.");
+  if(!wb.Sheets["Attendance"])throw new Error("No 'Attendance' sheet found.");
+  var rateMap={};
+  (XLSX.utils.sheet_to_json(wb.Sheets["Rate"],{header:1})||[]).forEach(function(r){
+    if(!r[0]||r[0]==="SR NO")return;
+    var code=String(r[1]||"").trim();
+    if(code)rateMap[code]={rate:Number(r[3])||0};
+  });
+  var rawRows=XLSX.utils.sheet_to_json(wb.Sheets["Attendance"],{header:1,raw:true,defval:""});
+  var dateColMap=[],hdrRow=-1;
+  for(var i=0;i<rawRows.length;i++){
+    var found=[];
+    for(var c=0;c<rawRows[i].length;c++){var lbl=toLabel(rawRows[i][c]);if(lbl)found.push({col:c,label:lbl});}
+    if(found.length>=5){dateColMap=found;hdrRow=i;break;}
+  }
+  if(!dateColMap.length)throw new Error("Cannot find date headers in Attendance sheet.");
+  var DATES=dateColMap.map(function(d){return d.label;});
+  var DCOLS=dateColMap.map(function(d){return d.col;});
+  var txtRows=XLSX.utils.sheet_to_json(wb.Sheets["Attendance"],{header:1,raw:false,defval:""});
+  var employees=[],curDept="";
+  for(var i=hdrRow+1;i<txtRows.length;i++){
+    var row=txtRows[i];
+    var c2=String(row[2]||"").trim(),c4=String(row[4]||"").trim();
+    if(c2==="Department"&&c4&&c4.trim()&&c4.trim()!==" "){curDept=c4;continue;}
+    var seq=Number(row[0]);if(!seq||isNaN(seq))continue;
+    var code=String(row[2]||"").trim(),name=String(row[3]||"").trim();
+    if(!code||code==="Employee Code")continue;
+    var daily={};
+    DCOLS.forEach(function(dc,i){daily[DATES[i]]=String(row[dc]||"").trim();});
+    employees.push({dept:curDept||"Other",code:code,name:name,daily:daily});
+  }
+  var empCalc=employees.map(function(emp){
+    var rate=(rateMap[emp.code]||{}).rate||0;
+    var totalAmt=0,totalPresent=0,totalWorking=0,daily={};
+    DATES.forEach(function(d){
+      var st=emp.daily[d]||"",amt=getAmt(st,rate);
+      if(st!=="WO")totalWorking++;
+      if(amt>0){totalPresent+=(st==="½P"||st==="1/2P"?0.5:1);totalAmt+=amt;}
+      daily[d]={status:st,amt:amt};
+    });
+    return{dept:emp.dept,code:emp.code,name:emp.name,rate:rate,totalAmt:totalAmt,totalPresent:totalPresent,totalWorking:totalWorking,daily:daily};
+  });
+  var depts=[];
+  empCalc.forEach(function(e){if(e.dept&&depts.indexOf(e.dept)===-1)depts.push(e.dept);});
+  var dateSummary={};
+  DATES.forEach(function(d){
+    dateSummary[d]={_grand:{total:0,persons:0}};
+    depts.forEach(function(dept){dateSummary[d][dept]={total:0,persons:0};});
+  });
+  empCalc.forEach(function(emp){
+    DATES.forEach(function(d){
+      var amt=emp.daily[d].amt;
+      if(amt>0){
+        if(!dateSummary[d][emp.dept])dateSummary[d][emp.dept]={total:0,persons:0};
+        dateSummary[d][emp.dept].total+=amt;dateSummary[d][emp.dept].persons++;
+        dateSummary[d]["_grand"].total+=amt;dateSummary[d]["_grand"].persons++;
+      }
+    });
+  });
+  return{empCalc:empCalc,depts:depts,dateSummary:dateSummary,DATES:DATES};
+}
+
+/* ── PARSE INTIME FILE ────────────────────────────── */
+function parseInTime(buf){
+  var wb=XLSX.read(buf,{type:"array",cellDates:false});
+  var sheetName=wb.SheetNames[0];
+  var rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,raw:false,defval:""});
+  var DATES=[],DCOLS=[],hdrRow=-1;
+  for(var i=0;i<rows.length;i++){
+    var found=[];
+    for(var c2=0;c2<rows[i].length;c2++){
+      var v=String(rows[i][c2]).trim();
+      if(/^\d{1,2}-[A-Za-z]{3}$/.test(v))found.push({col:c2,label:v});
+    }
+    if(found.length>=2){DATES=found.map(function(d){return d.label;});DCOLS=found.map(function(d){return d.col;});hdrRow=i;break;}
+  }
+  if(!DATES.length)throw new Error("Cannot find date columns. Dates must look like '01-May'.");
+  var employees=[],curDept="";
+  for(var i=hdrRow+1;i<rows.length;i++){
+    var row=rows[i];
+    var r1=String(row[1]||"").trim();
+    if(r1==="Department:"){for(var c2=2;c2<row.length;c2++){var dv=String(row[c2]||"").trim();if(dv){curDept=dv;break;}}continue;}
+    if(r1==="Employee Code:-"){
+      var nonEmpty=[];
+      for(var c2=0;c2<row.length;c2++){var v=String(row[c2]||"").trim();if(v)nonEmpty.push(v);}
+      var code=nonEmpty[1]||"",name=nonEmpty[3]||"";
+      if(!code)continue;
+      var inTimes={},outTimes={},lateBys={},statuses={};
+      for(var j=i+1;j<Math.min(i+13,rows.length);j++){
+        var jrow=rows[j];
+        var jlbl=String(jrow[1]||"").trim();
+        if(jlbl==="In Time"){DCOLS.forEach(function(dc,di){var t=String(jrow[dc]||"").trim();inTimes[DATES[di]]=(t==="00:00"||t==="00:00:00")?"":t;});}
+        if(jlbl==="Out Time"){DCOLS.forEach(function(dc,di){var t=String(jrow[dc]||"").trim();outTimes[DATES[di]]=(t==="00:00"||t==="00:00:00")?"":t;});}
+        if(jlbl==="Late By"){DCOLS.forEach(function(dc,di){var t=String(jrow[dc]||"").trim();lateBys[DATES[di]]=(t==="00:00"||t==="00:00:00")?"":t;});}
+        if(jlbl==="Status"){DCOLS.forEach(function(dc,di){statuses[DATES[di]]=String(jrow[dc]||"").trim();});}
+      }
+      employees.push({dept:curDept||"STAFF",code:code,name:name,inTimes:inTimes,outTimes:outTimes,lateBys:lateBys,statuses:statuses});
+    }
+  }
+  if(!employees.length)throw new Error("No employees found. Expected 'Employee Code:-' rows.");
+  return{sheetName:sheetName,DATES:DATES,employees:employees};
+}
+
+/* ── TAB 1 ────────────────────────────────────────── */
+function buildTab1(){
+  var depts=W.depts,ds=W.dateSummary,DATES=W.DATES;
+  var ths="<th>Date</th>";
+  depts.forEach(function(d){ths+='<th colspan="2" style="text-align:center;background:#dce9f7;color:#0c447c">'+d+'</th>';});
+  ths+='<th colspan="2" style="background:#1F3864;color:#fff;text-align:center">Grand Total</th>';
+  var ths2="<th></th>";
+  depts.forEach(function(){ths2+='<th style="font-size:10px;color:#888">₹ Amt</th><th style="font-size:10px;color:#888">Persons</th>';});
+  ths2+='<th style="background:#1F3864;color:#fff;font-size:10px">₹ Amt</th><th style="background:#1F3864;color:#fff;font-size:10px">Persons</th>';
+  var rows="";
+  DATES.forEach(function(d){
+    var grand=safeCell(ds,d,"_grand"),cells="";
+    depts.forEach(function(dept){
+      var s=safeCell(ds,d,dept);
+      cells+='<td style="text-align:right">'+(s.total>0?inr(s.total):'<span class="dim">-</span>')+'</td>';
+      cells+='<td style="text-align:center">'+(s.persons>0?s.persons:'<span class="dim">-</span>')+'</td>';
+    });
+    rows+='<tr><td style="font-weight:500">'+d+'</td>'+cells+'<td style="text-align:right;font-weight:500;background:#e8eef7">'+inr(grand.total)+'</td><td style="text-align:center;font-weight:500;background:#e8eef7">'+grand.persons+'</td></tr>';
+  });
+  var totCells="";
+  depts.forEach(function(dept){
+    var tot=DATES.reduce(function(s,d){return s+safeCell(ds,d,dept).total;},0);
+    var per=DATES.reduce(function(s,d){return s+safeCell(ds,d,dept).persons;},0);
+    totCells+='<td style="text-align:right;color:#fff">'+(tot>0?inr(tot):"-")+'</td><td style="text-align:center;color:#fff">'+(per||"-")+'</td>';
+  });
+  var gt=DATES.reduce(function(s,d){return s+safeCell(ds,d,"_grand").total;},0);
+  var gp=DATES.reduce(function(s,d){return s+safeCell(ds,d,"_grand").persons;},0);
+  return'<div class="ov"><table><thead><tr>'+ths+'</tr><tr>'+ths2+'</tr></thead><tbody>'+rows+'<tr class="grand-row"><td>Total</td>'+totCells+'<td style="text-align:right;color:#fff">'+inr(gt)+'</td><td style="text-align:center;color:#fff">'+gp+'</td></tr></tbody></table></div>';
+}
+
+/* ── TAB 2 ────────────────────────────────────────── */
+function buildTab2(){
+  var DATES=W.DATES,empCalc=W.empCalc,depts=W.depts;
+  var selDate=T2Dt,selDept=T2D,isAll=(selDate==="ALL");
+  var periodLabel=isAll?(DATES[0]+" → "+DATES[DATES.length-1]):selDate;
+  var filtered=selDept==="ALL"?empCalc:empCalc.filter(function(e){return e.dept===selDept;});
+  var getV=function(emp){return isAll?emp.totalAmt:safeDay(emp,selDate).amt;};
+  var totalAmt=filtered.reduce(function(s,e){return s+getV(e);},0);
+  var paid,absent,lbl1,lbl2;
+  if(isAll){
+    paid=DATES.reduce(function(s,d){return s+filtered.filter(function(e){return safeDay(e,d).amt>0;}).length;},0);
+    absent=DATES.reduce(function(s,d){return s+filtered.filter(function(e){return safeDay(e,d).status!=="WO"&&safeDay(e,d).amt===0;}).length;},0);
+    lbl1="Total Person-Days Paid";lbl2="Total Person-Days Absent";
+  }else{
+    paid=filtered.filter(function(e){return safeDay(e,selDate).amt>0;}).length;
+    absent=filtered.filter(function(e){return safeDay(e,selDate).amt===0;}).length;
+    lbl1="Persons Paid";lbl2="Absent / WO";
+  }
+  var grouped={},deptOrder=[];
+  filtered.forEach(function(emp){if(!grouped[emp.dept]){grouped[emp.dept]=[];deptOrder.push(emp.dept);}grouped[emp.dept].push(emp);});
+  var thead='<th>Code</th><th>Name</th><th>Dept</th><th style="text-align:right">Rate/Day</th>'+(isAll?'<th style="text-align:center">Days Present</th><th style="text-align:center">Working Days</th>':'<th style="text-align:center">Status</th><th></th>')+'<th style="text-align:right">Amount ('+periodLabel+')</th>';
+  var rows="";
+  deptOrder.forEach(function(dept){
+    var emps=grouped[dept],deptAmt=emps.reduce(function(s,e){return s+getV(e);},0);
+    rows+='<tr class="dept-hdr"><td colspan="8">▸ '+dept+' &nbsp;|&nbsp; '+inr(deptAmt)+'</td></tr>';
+    emps.forEach(function(emp){
+      var amt=getV(emp),mid=isAll?'<td style="text-align:center">'+emp.totalPresent+'</td><td style="text-align:center">'+emp.totalWorking+'</td>':'<td style="text-align:center">'+mkBadge(safeDay(emp,selDate).status)+'</td><td></td>';
+      rows+='<tr><td>'+emp.code+'</td><td>'+emp.name+'</td><td style="color:#888">'+emp.dept+'</td><td style="text-align:right">'+(emp.rate>0?"₹"+emp.rate:"-")+'</td>'+mid+'<td style="text-align:right;font-weight:'+(amt>0?500:400)+';color:'+(amt>0?"#111":"#bbb")+'">'+(amt>0?"₹"+amt:"—")+'</td></tr>';
+    });
+  });
+  return'<div class="filters"><div><label>Department</label><select id="t2dept">'+mkOpts(depts,selDept,"All Departments")+'</select></div><div><label>Date</label><select id="t2date">'+mkOpts(DATES,selDate,"All Dates — Period Total")+'</select></div></div>'+
+    '<div class="kg4"><div class="kpi"><div class="kpi-lbl">Total Amount ('+periodLabel+')</div><div class="kpi-val">'+inr(totalAmt)+'</div></div><div class="kpi"><div class="kpi-lbl">'+lbl1+'</div><div class="kpi-val">'+paid+'</div></div><div class="kpi"><div class="kpi-lbl">'+lbl2+'</div><div class="kpi-val">'+absent+'</div></div><div class="kpi"><div class="kpi-lbl">Total Employees</div><div class="kpi-val">'+filtered.length+'</div></div></div>'+
+    '<div class="ov"><table><thead><tr>'+thead+'</tr></thead><tbody>'+rows+'<tr class="grand-row"><td colspan="7" style="text-align:right">TOTAL &nbsp;|&nbsp; '+periodLabel+'</td><td style="text-align:right">'+inr(totalAmt)+'</td></tr></tbody></table></div>';
+}
+
+/* ── TAB 3 ────────────────────────────────────────── */
+function buildTab3(){
+  var DATES=W.DATES,empCalc=W.empCalc,depts=W.depts;
+  var selDept=T3D,selDate=T3Dt,isAll=(selDate==="ALL");
+  var filtered=selDept==="ALL"?empCalc:empCalc.filter(function(e){return e.dept===selDept;});
+  var getV=function(emp){return isAll?emp.totalAmt:safeDay(emp,selDate).amt;};
+  var sorted=filtered.slice().sort(function(a,b){return getV(b)-getV(a);});
+  var grandTotal=sorted.reduce(function(s,e){return s+getV(e);},0);
+  var periodLabel=isAll?(DATES[0]+" → "+DATES[DATES.length-1]):selDate;
+  var totalPaid,kpi2Lbl;
+  if(isAll){totalPaid=DATES.reduce(function(s,d){return s+sorted.filter(function(e){return safeDay(e,d).amt>0;}).length;},0);kpi2Lbl="Total Person-Days Paid";}
+  else{totalPaid=sorted.filter(function(e){return getV(e)>0;}).length;kpi2Lbl="Persons Paid";}
+  var midHdr=isAll?'<th style="text-align:center">Days Present</th><th style="text-align:center">Working Days</th>':'<th style="text-align:center">Status on '+selDate+'</th><th></th>';
+  var rows="";
+  sorted.forEach(function(emp,ri){
+    var val=getV(emp),hl=val>5000?"background:#e2efda;":val>0?"background:#edf3fb;":"";
+    var mid=isAll?'<td style="text-align:center">'+emp.totalPresent+'</td><td style="text-align:center">'+emp.totalWorking+'</td>':'<td style="text-align:center">'+mkBadge(safeDay(emp,selDate).status)+'</td><td></td>';
+    rows+='<tr><td style="color:#aaa">'+(ri+1)+'</td><td>'+emp.dept+'</td><td>'+emp.code+'</td><td>'+emp.name+'</td><td style="text-align:right">₹'+(emp.rate||"-")+'</td>'+mid+'<td style="text-align:right"><span style="'+hl+'padding:2px 8px;border-radius:4px;font-weight:500">'+(val>0?inr(val):'<span class="dim">—</span>')+'</span></td></tr>';
+  });
+  return'<div class="filters"><div><label>Department</label><select id="t3dept">'+mkOpts(depts,selDept,"All Departments")+'</select></div><div><label>Date</label><select id="t3date">'+mkOpts(DATES,selDate,"All Dates — Period Total")+'</select></div></div>'+
+    '<div class="kg3"><div class="kpi"><div class="kpi-lbl">Total Amount ('+periodLabel+')</div><div class="kpi-val">'+inr(grandTotal)+'</div></div><div class="kpi"><div class="kpi-lbl">'+kpi2Lbl+'</div><div class="kpi-val">'+totalPaid+'</div></div><div class="kpi"><div class="kpi-lbl">Total Employees</div><div class="kpi-val">'+sorted.length+'</div></div></div>'+
+    '<div class="ov"><table><thead><tr><th>#</th><th>Dept</th><th>Code</th><th>Name</th><th style="text-align:right">Rate/Day</th>'+midHdr+'<th style="text-align:right">Amount ('+periodLabel+')</th></tr></thead><tbody>'+rows+'<tr class="grand-row"><td colspan="7" style="text-align:right">Grand Total &nbsp;|&nbsp; '+periodLabel+'</td><td style="text-align:right">'+inr(grandTotal)+'</td></tr></tbody></table></div>';
+}
+
+/* ── TAB 4 ────────────────────────────────────────── */
+function buildTab4(){
+  if(!IT){return'<div style="padding:3rem;text-align:center;color:#888"><div style="font-size:40px;margin-bottom:12px">📋</div><p style="font-size:15px;font-weight:500;margin-bottom:8px">In-Time data not available</p><p style="font-size:13px">Click <strong>📂 Upload Files</strong> above to upload the In-Time Excel.</p></div>';}
+  var DATES=IT.DATES,emps=IT.employees;
+  var depts=[];emps.forEach(function(e){if(e.dept&&depts.indexOf(e.dept)===-1)depts.push(e.dept);});
+  var selDept=T4D;
+  var filtered=selDept==="ALL"?emps:emps.filter(function(e){return e.dept===selDept;});
+  var grouped={},deptOrder=[];
+  filtered.forEach(function(emp){if(!grouped[emp.dept]){grouped[emp.dept]=[];deptOrder.push(emp.dept);}grouped[emp.dept].push(emp);});
+  var ths='<th>#</th><th>Code</th><th>Name</th><th>Dept</th>';
+  DATES.forEach(function(d){ths+='<th style="text-align:center;min-width:72px">'+d+'</th>';});
+  var rows="",serial=1;
+  deptOrder.forEach(function(dept){
+    rows+='<tr class="dept-hdr"><td colspan="'+(4+DATES.length)+'">▸ '+dept+' ('+grouped[dept].length+' employees)</td></tr>';
+    grouped[dept].forEach(function(emp){
+      var cells="";
+      DATES.forEach(function(d){
+        var t=emp.inTimes[d]||"",ot=emp.outTimes[d]||"",lb=emp.lateBys[d]||"",st=emp.statuses[d]||"";
+        var color="";
+        if(t){var m=t.match(/(\d{1,2}):(\d{2})/);if(m){var hr=parseInt(m[1]),mn=parseInt(m[2]);color=(hr>9||(hr===9&&mn>30))?"color:#c00000":"color:#375623";}}
+        var cell="";
+        if(st==="A"){cell='<span class="dim">A</span>';}
+        else if(st==="WO"){cell='<span style="color:#888">WO</span>';}
+        else if(t){cell='<span style="font-weight:500;'+color+'">'+t+'</span>'+(ot?'<br><span style="font-size:10px;color:#555">'+ot+'</span>':"")+(lb?'<br><span style="font-size:10px;color:#c00000">+'+lb+'</span>':"");}
+        else{cell='<span class="dim">—</span>';}
+        cells+='<td style="text-align:center;font-size:11px;">'+cell+'</td>';
+      });
+      rows+='<tr><td style="color:#aaa">'+serial+'</td><td>'+emp.code+'</td><td>'+emp.name+'</td><td style="color:#888">'+emp.dept+'</td>'+cells+'</tr>';
+      serial++;
+    });
+  });
+  return'<div class="filters"><div><label>Department</label><select id="t4dept">'+mkOpts(depts,selDept,"All Departments")+'</select></div><div style="display:flex;align-items:center;gap:8px;margin-top:18px"><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:#e2efda;color:#375623;">● On time (≤09:30)</span><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:#ffe7e7;color:#c00000;">● Late (>09:30)</span></div></div>'+
+    '<div style="font-size:12px;color:#666;margin-bottom:8px">Sheet: <strong>'+IT.sheetName+'</strong> &nbsp;|&nbsp; '+filtered.length+' employees &nbsp;|&nbsp; '+DATES.length+' dates'+(IT._updatedAt?' &nbsp;|&nbsp; Last updated: '+fmtTime(IT._updatedAt):"")+' </div>'+
+    '<div class="ov"><table><thead><tr>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+/* ── ATTACH EVENTS ───────────────────────────────── */
+function attachEvents(){
+  document.querySelectorAll(".tab-btn").forEach(function(btn){btn.addEventListener("click",function(){TAB=btn.dataset.tab;renderDashboard();});});
+  var el;
+  el=document.getElementById("btnUpload");  if(el)el.addEventListener("click",function(){SHOW_UPLOAD=true;render();});
+  el=document.getElementById("btnBackDash");if(el)el.addEventListener("click",function(){SHOW_UPLOAD=false;renderDashboard();});
+  el=document.getElementById("t2dept");     if(el)el.addEventListener("change",function(){T2D=this.value;renderDashboard();});
+  el=document.getElementById("t2date");     if(el)el.addEventListener("change",function(){T2Dt=this.value;renderDashboard();});
+  el=document.getElementById("t3dept");     if(el)el.addEventListener("change",function(){T3D=this.value;renderDashboard();});
+  el=document.getElementById("t3date");     if(el)el.addEventListener("change",function(){T3Dt=this.value;renderDashboard();});
+  el=document.getElementById("t4dept");     if(el)el.addEventListener("change",function(){T4D=this.value;renderDashboard();});
+
+
+}
+
+/* ── RENDER ──────────────────────────────────────── */
+function render(){
+  var app=document.getElementById("app");
+
+
+
+  if(SHOW_UPLOAD){
+    app.innerHTML=
+      '<div class="upload-page">'+
+        '<div class="upload-box '+(W?"loaded":"")+'">'+
+          '<label for="fu1"><div class="icon">'+(W?"✅":"📊")+'</div><div class="title">Wage Report</div>'+
+          '<div class="hint">'+(W?"Currently loaded<br><small>"+W.empCalc.length+" employees · "+W.DATES[0]+"→"+W.DATES[W.DATES.length-1]+"<br>Click to upload new file</small>":"Click to upload<br>Needs Attendance + Rate sheets")+'</div></label>'+
+          (W?'<div class="file-bar">✔ Last updated: '+fmtTime(W._updatedAt)+'</div>':"")+
+        '</div>'+
+        '<div class="upload-box '+(IT?"loaded":"")+'">'+
+          '<label for="fu2"><div class="icon">'+(IT?"✅":"⏰")+'</div><div class="title">In-Time Register</div>'+
+          '<div class="hint">'+(IT?"Currently loaded<br><small>"+IT.employees.length+" employees · "+IT.DATES[0]+"→"+IT.DATES[IT.DATES.length-1]+"<br>Click to upload new file</small>":"Click to upload<br>Staff .xls or .xlsx file")+'</div></label>'+
+          (IT?'<div class="file-bar">✔ Last updated: '+fmtTime(IT._updatedAt)+'</div>':"")+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;margin-top:1.5rem">'+
+        '<button class="go-btn" id="goBtn" style="flex:1" '+((W||IT)?"":" disabled")+'>'+((W||IT)?"▶ Open Dashboard":"Upload at least one file")+'</button>'+
+        (W||IT?'<button class="go-btn" id="btnBackDash" style="flex:0 0 auto;width:auto;padding:12px 20px;background:#555">← Back</button>':"")+
+      '</div>';
+
+    var goBtn=document.getElementById("goBtn");
+    if(goBtn&&(W||IT))goBtn.addEventListener("click",function(){SHOW_UPLOAD=false;TAB=(W?"date":"intime");renderDashboard();});
+    attachEvents();
+    return;
+  }
+
+  renderDashboard();
+}
+
+function renderDashboard(){
+  var app=document.getElementById("app");
+  if(!W&&!IT){SHOW_UPLOAD=true;render();return;}
+  if(!W&&(TAB==="date"||TAB==="dept"||TAB==="emp"))TAB="intime";
+  var tabDefs=[];
+  if(W){tabDefs.push({id:"date",label:"📅 Date Summary"});tabDefs.push({id:"dept",label:"🏭 Dept Detail"});tabDefs.push({id:"emp",label:"👤 Employee Total"});}
+  tabDefs.push({id:"intime",label:"⏰ In-Time"+(IT?"":" (—)")});
+  var tabBtns=tabDefs.map(function(t){return'<button class="tab-btn'+(TAB===t.id?" active":"")+'" data-tab="'+t.id+'">'+t.label+'</button>';}).join("");
+  var content=TAB==="date"?buildTab1():TAB==="dept"?buildTab2():TAB==="emp"?buildTab3():buildTab4();
+  app.innerHTML=
+    '<div class="topbar">'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    (W?'<span class="pill">'+W.empCalc.length+' employees</span><span class="pill">'+W.DATES.length+' dates: '+W.DATES[0]+' → '+W.DATES[W.DATES.length-1]+'</span>':"")+
+    (IT?'<span class="pill" style="background:#e2efda;color:#375623">⏰ In-Time loaded</span>':"")+
+    '</div>'+
+    '<button id="btnUpload" style="font-size:12px;padding:5px 10px">📂 Upload Files</button>'+
+    '</div>'+
+    '<div class="tabs">'+tabBtns+'</div>'+
+    '<div class="card">'+content+'</div>';
+  attachEvents();
+}
+
+/* ── FILE LOAD ───────────────────────────────────── */
+function loadFile(f,type){
+  if(!f||!f.name.match(/\.xlsx?$/i)){alert("Please upload an .xls or .xlsx file.");return;}
+  var saving=document.createElement("div");
+  saving.style.cssText="position:fixed;bottom:1rem;right:1rem;background:#1F3864;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:999";
+  saving.textContent="⏳ Uploading & saving…";
+  document.body.appendChild(saving);
+
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var parsed, gasType;
+      if(type===1){
+        parsed=parseWage(new Uint8Array(ev.target.result));
+        W=parsed; W._updatedAt=new Date().toISOString();
+        T2D="ALL";T2Dt="ALL";T3D="ALL";T3Dt="ALL";
+        gasType="wage";
+      }else{
+        parsed=parseInTime(new Uint8Array(ev.target.result));
+        IT=parsed; IT._updatedAt=new Date().toISOString();
+        T4D="ALL";
+        gasType="intime";
+      }
+      // Save to GAS so other devices get it
+      gasPost(gasType, parsed, function(res, err){
+        document.body.removeChild(saving);
+        if(err){
+          var toast=document.createElement("div");
+          toast.style.cssText="position:fixed;bottom:1rem;right:1rem;background:#c00;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:999";
+          toast.textContent="⚠ Saved locally only (GAS error: "+err+")";
+          document.body.appendChild(toast);
+          setTimeout(function(){document.body.removeChild(toast);},4000);
+        }else{
+          var toast=document.createElement("div");
+          toast.style.cssText="position:fixed;bottom:1rem;right:1rem;background:#375623;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:999";
+          toast.textContent="✅ Saved! All devices will see updated data.";
+          document.body.appendChild(toast);
+          setTimeout(function(){document.body.removeChild(toast);},3000);
+          setSyncStatus("✅ Last saved: "+fmtTime(new Date().toISOString()));
+        }
+      });
+      render();
+    }catch(err){
+      document.body.removeChild(saving);
+      alert("Error reading file:\n"+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+document.getElementById("fu1").addEventListener("change",function(e){loadFile(e.target.files[0],1);this.value="";});
+document.getElementById("fu2").addEventListener("change",function(e){loadFile(e.target.files[0],2);this.value="";});
+document.addEventListener("dragover",function(e){e.preventDefault();});
+document.addEventListener("drop",function(e){
+  e.preventDefault();
+  var f=e.dataTransfer.files[0];if(!f)return;
+  var fname=(f.name||"").toLowerCase();
+  if(fname.indexOf("intime")>=0||fname.indexOf("staff")>=0||fname.indexOf("detailed")>=0||fname.indexOf("monthly")>=0){loadFile(f,2);}
+  else if(fname.indexOf("manpower")>=0||fname.indexOf("wage")>=0||fname.indexOf("attendance")>=0){loadFile(f,1);}
+  else if(!W){loadFile(f,1);}else{loadFile(f,2);}
+});
+
+/* ── INIT ─────────────────────────────────────────── */
+attachEvents();
+if(!GAS_URL){
+  // First time — show settings
+  SHOW_SETTINGS=true;
+  render();
+} else {
+  // Auto-load latest data from GAS
+  document.getElementById("app").innerHTML='<div class="loading-screen"><div class="spinner"></div><p style="font-size:14px;color:#666">Loading latest dashboard data…</p></div>';
+  loadFromGAS();
+}
+</script>
+</body>
+</html>
